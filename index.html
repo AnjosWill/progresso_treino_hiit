@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progresso de Treino HIIT</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+            color: #111827;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            text-align: center;
+            font-size: 1.875rem;
+            margin-bottom: 1rem;
+        }
+        .input-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        input[type="date"] {
+            padding: 10px;
+            font-size: 1rem;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 300px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 300px;
+        }
+        button:hover {
+            background-color: #2563eb;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 12px;
+            border: 1px solid #d1d5db;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+        .result h2 {
+            font-size: 1.5rem;
+            color: #3b82f6;
+            margin-bottom: 10px;
+        }
+        .result p {
+            font-size: 1rem;
+            color: #374151;
+            margin: 5px 0;
+        }
+        .highlight {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #1f2937;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 12px;
+            text-align: center;
+            font-size: 1rem;
+        }
+        th {
+            background-color: #3b82f6;
+            color: white;
+        }
+    </style>
+</head>
+<body onload="carregarDataSalva()">
+    <h1>Progresso do Treino HIIT</h1>
+
+    <div class="input-section">
+        <label for="start-date">Escolha a data de início: </label>
+        <input type="date" id="start-date">
+        <button onclick="salvarECalcularProgresso()">Ver treino de hoje</button>
+    </div>
+
+    <div class="result" id="result"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Semana</th>
+                <th>Velocidade do Sprint (km/h)</th>
+                <th>Duração do Sprint</th>
+                <th>Tempo de Recuperação (6 km/h)</th>
+                <th>Estrutura do Treino</th>
+            </tr>
+        </thead>
+        <tbody id="tabela-semanas">
+        </tbody>
+    </table>
+
+    <script>
+        function salvarECalcularProgresso() {
+            const dataInicio = document.getElementById('start-date').value;
+            if (!dataInicio) {
+                document.getElementById('result').innerHTML = "<strong>Por favor, selecione uma data de início.</strong>";
+                return;
+            }
+            localStorage.setItem('dataInicioHIIT', dataInicio); // Salva a data no cache do navegador
+            calcularProgresso();
+        }
+
+        function carregarDataSalva() {
+            const dataSalva = localStorage.getItem('dataInicioHIIT');
+            if (dataSalva) {
+                document.getElementById('start-date').value = dataSalva;
+                calcularProgresso();
+            }
+        }
+
+        function calcularProgresso() {
+            const dataInicio = document.getElementById('start-date').value;
+            const resultDiv = document.getElementById('result');
+
+            if (!dataInicio) {
+                resultDiv.innerHTML = "<strong>Por favor, selecione uma data de início.</strong>";
+                return;
+            }
+
+            const dataInicial = new Date(dataInicio);
+            const hoje = new Date();
+            const diferencaDias = Math.floor((hoje - dataInicial) / (1000 * 60 * 60 * 24));
+            let semanaAtual = Math.floor(diferencaDias / 7) + 1;
+            const cicloAtual = Math.floor((semanaAtual - 1) / 8) + 1;
+            const semanaNoCiclo = ((semanaAtual - 1) % 8) + 1;
+
+            let velocidadeBase = 10; // Velocidade inicial padrão
+            let duracaoSprint = 30; // Duração inicial do sprint em segundos
+            let tempoRecuperacao = 30; // Tempo de recuperação inicial em segundos
+
+            // Definindo progressão para ciclos ímpares (1, 3, 5...) até 2:1 e depois resetando
+            const progressaoCiclosImpares = [
+                { sprint: 30, recuperacao: 30 },
+                { sprint: 35, recuperacao: 25 },
+                { sprint: 40, recuperacao: 20 },
+                { sprint: 45, recuperacao: 15 } // Limite 2:1
+            ];
+
+            // Ciclos ímpares: Progressão no tempo de sprint e recuperação
+            if (cicloAtual % 2 !== 0) {
+                const progressoIndex = (cicloAtual - 1) % progressaoCiclosImpares.length;
+                duracaoSprint = progressaoCiclosImpares[progressoIndex].sprint;
+                tempoRecuperacao = progressaoCiclosImpares[progressoIndex].recuperacao;
+                velocidadeBase += semanaNoCiclo - 1;
+            } 
+            // Ciclos pares: Progressão da velocidade até 17 km/h com reset para 10 km/h
+            else {
+                const progressoVelocidade = ((cicloAtual / 2 - 1) % 8) + 10; // Incrementa até 17 e reseta para 10
+                velocidadeBase = progressoVelocidade <= 17 ? progressoVelocidade : 10;
+
+                if (semanaNoCiclo <= 2) {
+                    duracaoSprint = 30;
+                    tempoRecuperacao = 30;
+                } else if (semanaNoCiclo <= 4) {
+                    duracaoSprint = 35;
+                    tempoRecuperacao = 25;
+                } else if (semanaNoCiclo <= 6) {
+                    duracaoSprint = 40;
+                    tempoRecuperacao = 20;
+                } else {
+                    duracaoSprint = 45;
+                    tempoRecuperacao = 15;
+                }
+            }
+
+            const dataInicioProximaSemana = new Date(dataInicial.getTime() + (semanaAtual * 7 * 24 * 60 * 60 * 1000));
+            const dataFimCiclo = new Date(dataInicial.getTime() + (cicloAtual * 8 * 7 * 24 * 60 * 60 * 1000));
+
+            // Preencher a tabela
+            const tabela = document.getElementById('tabela-semanas');
+            tabela.innerHTML = '';
+            for (let i = 1; i <= 8; i++) {
+                let velocidadeSemana = cicloAtual % 2 !== 0 ? 10 + (i - 1) : velocidadeBase;
+                let sprintDuracao = cicloAtual % 2 !== 0 ? duracaoSprint : [30, 35, 40, 45][Math.floor((i - 1) / 2)];
+                let recuperacaoDuracao = cicloAtual % 2 !== 0 ? tempoRecuperacao : [30, 25, 20, 15][Math.floor((i - 1) / 2)];
+
+                const linha = `
+                    <tr>
+                        <td>Semana ${i}</td>
+                        <td>${velocidadeSemana} km/h</td>
+                        <td>${sprintDuracao} segundos</td>
+                        <td>${recuperacaoDuracao} segundos</td>
+                        <td>3 min de aquecimento, 24 min de HIIT, 3 min de resfriamento</td>
+                    </tr>
+                `;
+                tabela.innerHTML += linha;
+            }
+
+            resultDiv.innerHTML = `
+                <h2>Treino de hoje</h2>
+                <p><span class="highlight">Semana ${semanaNoCiclo}: Velocidade do sprint ${velocidadeBase} km/h, ${duracaoSprint}s sprint / ${tempoRecuperacao}s recuperação.</span></p>
+                <p><strong>Ciclo atual:</strong> ${cicloAtual}</p>                
+                <p><strong>Data de início da próxima semana:</strong> ${formatarData(dataInicioProximaSemana)}</p>
+                <p><strong>Data de término do ciclo atual:</strong> ${formatarData(dataFimCiclo)}</p>
+                <p><strong>Estrutura:</strong> 3 min de aquecimento, 24 min de HIIT, 3 min de resfriamento.</p>
+            `;
+        }
+
+        function formatarData(data) {
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            return `${dia}/${mes}/${ano}`;
+        }
+    </script>
+</body>
+</html>
